@@ -1,0 +1,19 @@
+{
+  "model": "Random Forest",
+  "results": [
+    {
+      "source": "OpenPhish (phishing, live feed)",
+      "urls": 300,
+      "removed_overlap": 0,
+      "metric": "Detection rate",
+      "value": 0.4633333333333333
+    },
+    {
+      "source": "Tranco top-10k (benign domains)",
+      "urls": 9996,
+      "removed_overlap": 4,
+      "metric": "Correctly benign (1 - FPR)",
+      "value": 0.0
+    }
+  ]
+}
