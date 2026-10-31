@@ -218,3 +218,20 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ---------------------------------------------------------------- URL Shield AI
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Raw datasets are downloaded with `python -m app.download_data` (not committed)
+dataset/*
+!dataset/.gitkeep
+
+# Trained model artefacts are reproducible with `python -m app.train`
+backend/app/models/*
+!backend/app/models/.gitkeep
+
+# Local PR helper
+PR_BODY.md
