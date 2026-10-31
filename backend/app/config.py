@@ -20,3 +20,7 @@ TRANCO_FILE = "tranco_top1m.csv"           # https://tranco-list.eu/top-1m.csv.z
 # Risk levels shown to the user (malicious probability)
 RISK_MEDIUM = float(os.getenv("RISK_MEDIUM", 0.40))   # >= this: "Suspicious"
 RISK_HIGH = float(os.getenv("RISK_HIGH", 0.70))       # >= this: "Malicious" (high risk)
+
+# Known-domain allow-list: registered domains ranked 1..KNOWN_DOMAINS_TOP in the Tranco list are
+# treated as legitimate when the URL is on the domain itself (not on a subdomain). 0 disables it.
+KNOWN_DOMAINS_TOP = int(os.getenv("KNOWN_DOMAINS_TOP", 10000))

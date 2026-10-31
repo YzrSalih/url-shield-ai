@@ -17,12 +17,33 @@ using a scikit-learn model, and a Streamlit frontend lets users analyze URLs int
 |---|---|
 | ![Batch](docs/screenshots/ui_batch.png) | ![Evaluation](docs/screenshots/ui_evaluation.png) |
 
+| Known-domain allow-list | Decision threshold explorer |
+|---|---|
+| ![Known domain](docs/screenshots/ui_known_domain.png) | ![Threshold](docs/screenshots/ui_threshold.png) |
+
+| Session overview | API documentation |
+|---|---|
+| ![Session](docs/screenshots/ui_session.png) | ![API docs](docs/screenshots/api_docs.png) |
+
+## Features
+
+- **Single and batch analysis** with three risk levels (Safe < 40% ≤ Suspicious < 70% ≤ Malicious).
+- **Explanation** of every prediction (exact decision-path decomposition of the Random Forest).
+- **URL anatomy**: the URL split into its parts with the signals found in each part.
+- **Known-domain allow-list**: links directly on the 10,000 most popular Tranco domains are treated as
+  safe, never on subdomains, URL shorteners, free hosting or paste sites. The model score is still
+  returned (`model_risk_level`). Set `KNOWN_DOMAINS_TOP=0` to disable it.
+- **Session overview**: verdict counts, score distribution and CSV export of all URLs analysed.
+- **Decision threshold explorer**: precision, recall, F1 and false positive rate of the model for
+  any threshold, computed on the test set (`reports/<run>/threshold_curve.json`).
+
 ## Project structure
 
 ```
 backend/
   app/
     main.py              # FastAPI service (/predict, /predict/batch, /model-info, /health)
+    allowlist.py         # Known-domain allow-list (Tranco top 10k)
     config.py            # Paths and risk thresholds
     data.py              # Dataset loading, cleaning, label-noise detection
     download_data.py     # Downloads Kaggle, URLhaus, OpenPhish, Tranco
@@ -76,7 +97,7 @@ streamlit run app.py
    The last run saves the model used by the API. Add `--sample 50000` for a quick run.
 
 Results are written to `reports/<run>/`: `results.md`, `external_eval.md`, `metrics.json`,
-`roc_curves.png`, `confusion_matrix.png`, `feature_importance.png`.
+`roc_curves.png`, `confusion_matrix.png`, `feature_importance.png`, `threshold_curve.json`.
 
 ### Results (Random Forest, 33 features)
 

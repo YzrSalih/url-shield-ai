@@ -87,6 +87,25 @@ def compute_metrics(y_true, y_pred, y_score) -> dict:
     }
 
 
+def threshold_curve(y_true, scores) -> dict:
+    """Confusion counts and metrics of the best model for decision thresholds 0.01 ... 0.99."""
+    y_true = np.asarray(y_true)
+    pos, neg = int((y_true == 1).sum()), int((y_true == 0).sum())
+    rows = []
+    for t in np.round(np.arange(0.01, 1.0, 0.01), 2):
+        pred = scores >= t
+        tp = int((pred & (y_true == 1)).sum())
+        fp = int((pred & (y_true == 0)).sum())
+        fn, tn = pos - tp, neg - fp
+        prec = tp / (tp + fp) if tp + fp else 1.0
+        rec = tp / pos if pos else 0.0
+        rows.append({"threshold": float(t), "tp": tp, "fp": fp, "fn": fn, "tn": tn,
+                     "precision": prec, "recall": rec,
+                     "f1": 2 * prec * rec / (prec + rec) if prec + rec else 0.0,
+                     "false_positive_rate": fp / neg if neg else 0.0})
+    return {"n_positive": pos, "n_negative": neg, "points": rows}
+
+
 def load_tranco_augmentation(n: int) -> pd.DataFrame:
     """
     Popular domains from Tranco (ranks > TRANCO_TEST_TOP) used as extra benign
@@ -317,6 +336,8 @@ def main():
     os.makedirs(reports_dir, exist_ok=True)
     print("Creating plots and reports ...")
     importances = save_plots(results, y_test, best_name, best["model"], X_test, reports_dir)
+    with open(os.path.join(reports_dir, "threshold_curve.json"), "w", encoding="utf-8") as f:
+        json.dump(threshold_curve(y_test, best["scores"]), f)
     with open(os.path.join(reports_dir, "metrics.json"), "w", encoding="utf-8") as f:
         json.dump({"info": info, "best_model": best_name,
                    "models": {n: {**r["metrics"], "train_time_s": r["train_time"]} for n, r in results.items()},

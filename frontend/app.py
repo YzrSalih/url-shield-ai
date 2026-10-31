@@ -7,6 +7,7 @@ import io
 import json
 import os
 
+import altair as alt
 import pandas as pd
 import requests
 import streamlit as st
@@ -180,6 +181,14 @@ section[data-testid="stSidebar"] { background: var(--surface); border-right: 1px
 .why .val { font-family: var(--font-mono); font-size: .8rem; text-align:right; font-variant-numeric: tabular-nums; }
 .why .legend { display:flex; justify-content:space-between; font-size:.72rem; color: var(--muted); padding: 2px 0 6px; }
 @keyframes grow { from { transform: scaleX(0); } }
+
+/* known-domain note under the verdict */
+.known { display:flex; gap:10px; align-items:flex-start; border:1px solid #C5E6D1; background:#F4FBF6; border-radius:8px;
+  padding:10px 14px; margin:8px 0 2px; font-size:.86rem; color: var(--ink); }
+.known b { font-family: var(--font-mono); font-weight:600; }
+.known .badge { font-family: var(--font-mono); font-size:.66rem; letter-spacing:.08em; text-transform:uppercase;
+  background: var(--safe); color:#fff; border-radius:3px; padding:2px 7px; white-space:nowrap; margin-top:2px; }
+.panel { border:1px solid var(--line); background: var(--surface); border-radius:8px; padding:14px 18px 6px; }
 </style>
 """)
 
@@ -274,6 +283,8 @@ def specimen(result):
     if result and result.get("anatomy"):
         parts, style = result["anatomy"], RISK_STYLE[result["risk_level"]]
         tag = f"<b class='tag-{style['tone']}'>{style['label']}</b>"
+        if result.get("known_domain"):
+            tag = f"<b class='tag-safe'>Safe · known domain</b>"
         p = result["malicious_probability"]
         foot = (f"<span>P(malicious)</span><div class='meter'><i class='{style['tone']}' "
                 f"style='width:{p * 100:.1f}%'></i></div><b>{p:.2f}</b>")
@@ -328,6 +339,87 @@ tab_analyze, tab_batch, tab_eval, tab_about = st.tabs(
 
 
 # --------------------------------------------------------------------------- tab 1: single URL
+
+LEVEL_COLORS = {"Safe": "#15803D", "Suspicious": "#B45309", "Malicious": "#B91C1C"}
+
+
+def render_session_overview(history):
+    """Summary of all URLs analysed in this session: counts per verdict, score distribution and table."""
+    hist = pd.DataFrame(history)
+    st.markdown("<div class='section-title' style='margin-top:26px'>Session overview</div>", unsafe_allow_html=True)
+    k1, k2, k3, k4, k5 = st.columns(5)
+    k1.metric("Analyzed", len(hist))
+    for col, lvl in zip((k2, k3, k4), ("Safe", "Suspicious", "Malicious")):
+        col.metric(lvl, int((hist["Verdict"] == lvl).sum()))
+    k5.metric("Median response", f"{hist['Latency (ms)'].median():.0f} ms")
+
+    c1, c2 = st.columns([2, 3])
+    counts = (hist["Verdict"].value_counts().reindex(list(LEVEL_COLORS), fill_value=0)
+              .rename_axis("Verdict").reset_index(name="URLs"))
+    bars = alt.Chart(counts).mark_bar(cornerRadiusEnd=3).encode(
+        x=alt.X("URLs:Q", axis=alt.Axis(tickMinStep=1, title="URLs")),
+        y=alt.Y("Verdict:N", sort=list(LEVEL_COLORS), title=None, scale=alt.Scale(paddingInner=0.35)),
+        color=alt.Color("Verdict:N", scale=alt.Scale(domain=list(LEVEL_COLORS), range=list(LEVEL_COLORS.values())),
+                        legend=None),
+        tooltip=["Verdict", "URLs"]).properties(height=170, title="Verdicts")
+    c1.altair_chart(bars, use_container_width=True)
+
+    pts = hist.assign(Short=hist["URL"].str.replace(r"^https?://", "", regex=True).str.slice(0, 38))
+    dots = alt.Chart(pts).mark_circle(size=110, opacity=.9).encode(
+        x=alt.X("Malicious probability:Q", scale=alt.Scale(domain=[0, 1]), axis=alt.Axis(format="%", title="Model probability (malicious)")),
+        y=alt.Y("Short:N", sort="-x", title=None, axis=alt.Axis(labelOverlap=False, labelLimit=260)),
+        color=alt.Color("Verdict:N", scale=alt.Scale(domain=list(LEVEL_COLORS), range=list(LEVEL_COLORS.values())),
+                        legend=None),
+        tooltip=["URL", "Verdict", alt.Tooltip("Malicious probability:Q", format=".1%"), "Known domain"])
+    rules = alt.Chart(pd.DataFrame({"t": [0.4, 0.7]})).mark_rule(strokeDash=[4, 4], color="#5A6B68").encode(x="t:Q")
+    c2.altair_chart((rules + dots).properties(height=max(170, 30 * len(pts)), title="Scores (dashed: 40% / 70% thresholds)"),
+                    use_container_width=True)
+
+    st.dataframe(hist, hide_index=True, column_config={"Malicious probability": st.column_config.ProgressColumn(
+        format="percent", min_value=0.0, max_value=1.0)})
+    b1, b2, _ = st.columns([1.3, 1, 3])
+    b1.download_button("Download session (CSV)", hist.to_csv(index=False).encode("utf-8"),
+                       "url_shield_session.csv", "text/csv", use_container_width=True)
+    if b2.button("Clear history", use_container_width=True):
+        st.session_state["history"] = []
+        st.session_state.pop("last", None)
+        st.rerun()
+
+
+def render_threshold_explorer(curve, run):
+    """Interactive view of the precision / recall trade-off of the decision threshold (test set)."""
+    pts = pd.DataFrame(curve["points"])
+    st.markdown("<div class='section-title' style='margin-top:26px'>Decision threshold explorer</div>",
+                unsafe_allow_html=True)
+    st.caption(f"Effect of the decision threshold on the {run} model, computed on the "
+               f"{curve['n_positive'] + curve['n_negative']:,} test URLs. A lower threshold catches more malicious "
+               "links but raises more false alarms. The dashed lines mark the 40% and 70% risk levels used in the app.")
+    t = st.slider("Threshold (malicious probability)", 0.05, 0.95, 0.50, 0.01, key="thr")
+    row = pts.iloc[(pts["threshold"] - t).abs().idxmin()]
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("Precision", f"{row['precision']:.3f}")
+    m2.metric("Recall", f"{row['recall']:.3f}")
+    m3.metric("F1", f"{row['f1']:.3f}")
+    m4.metric("False positive rate", f"{row['false_positive_rate']:.3f}")
+    st.markdown(
+        f"<div class='small-muted'>At {t:.0%}: <b>{int(row['tp']):,}</b> malicious URLs caught, "
+        f"<b>{int(row['fn']):,}</b> missed, <b>{int(row['fp']):,}</b> false alarms on "
+        f"{curve['n_negative']:,} benign URLs.</div>", unsafe_allow_html=True)
+    long = pts.melt(id_vars="threshold", value_vars=["precision", "recall", "f1", "false_positive_rate"],
+                    var_name="Metric", value_name="Value").replace(
+        {"precision": "Precision", "recall": "Recall", "f1": "F1", "false_positive_rate": "False positive rate"})
+    lines = alt.Chart(long).mark_line(strokeWidth=2.2).encode(
+        x=alt.X("threshold:Q", axis=alt.Axis(format="%", title="Decision threshold")),
+        y=alt.Y("Value:Q", scale=alt.Scale(domain=[0, 1]), title=None),
+        color=alt.Color("Metric:N", scale=alt.Scale(
+            domain=["Precision", "Recall", "F1", "False positive rate"],
+            range=["#0B6E69", "#B45309", "#0F1B1A", "#B91C1C"]), legend=alt.Legend(orient="bottom", title=None)),
+        tooltip=[alt.Tooltip("threshold:Q", format=".0%"), "Metric", alt.Tooltip("Value:Q", format=".3f")])
+    levels = alt.Chart(pd.DataFrame({"t": [0.4, 0.7]})).mark_rule(strokeDash=[4, 4], color="#94a3b8").encode(x="t:Q")
+    current = alt.Chart(pd.DataFrame({"t": [t]})).mark_rule(color="#0F1B1A", strokeWidth=1.5).encode(x="t:Q")
+    st.altair_chart((levels + lines + current).properties(height=300), use_container_width=True)
+
+
 def render_reasons(reasons):
     """Diverging bar chart: right = adds risk, left = removes risk, centred on zero."""
     max_imp = max(abs(r["impact"]) for r in reasons) or 1
@@ -376,6 +468,7 @@ with tab_analyze:
                 st.session_state["history"].insert(0, {
                     "URL": data["url"], "Verdict": RISK_STYLE[data["risk_level"]]["label"],
                     "Malicious probability": data["malicious_probability"],
+                    "Known domain": data.get("known_domain") or "",
                     "Latency (ms)": data["latency_ms"]})
                 st.rerun()   # redraw the header so the anatomy card shows this URL
 
@@ -383,11 +476,14 @@ with tab_analyze:
     if data:
         style = RISK_STYLE.get(data.get("risk_level", "high"), RISK_STYLE["high"])
         p = data["malicious_probability"]
+        known = data.get("known_domain")
+        desc = ("Known legitimate domain. The score on the right is the lexical model's own estimate, "
+                "shown for transparency." if known else style["text"])
         render_html(f"""
         <div class="verdict tone-{style['tone']}">
           <div class="state"><i></i>{style['label']}</div>
-          <div class="prob"><b>{p * 100:.1f}%</b><span>P(malicious)</span></div>
-          <div class="desc">{style['text']}</div>
+          <div class="prob"><b>{p * 100:.1f}%</b><span>{'model ' if known else ''}P(malicious)</span></div>
+          <div class="desc">{desc}</div>
           <div class="url">{esc(data['url'])}</div>
         </div>
         <div class="scale">
@@ -396,6 +492,13 @@ with tab_analyze:
           <div class="ticks"><span>safe</span><span>suspicious · 40%</span><span>malicious · 70%</span></div>
         </div>
         """)
+        if data.get("known_domain"):
+            model_label = RISK_STYLE[data.get("model_risk_level", "low")]["label"]
+            render_html(f"""
+            <div class="known"><span class="badge">Known domain</span>
+            <span><b>{esc(data['known_domain'])}</b> is one of the most popular legitimate websites (Tranco top
+            {(info or {}).get('known_domains_top', 10000):,}), so the link is treated as safe. The lexical model alone
+            would rate it <b>{model_label.lower()}</b> ({p * 100:.1f}%); the explanation below shows why.</span></div>""")
 
         st.write("")
         m1, m2, m3, m4 = st.columns(4)
@@ -415,12 +518,7 @@ with tab_analyze:
             st.caption("Explanations are available after retraining the model (`python -m app.train`).")
 
     if st.session_state["history"]:
-        st.markdown("<div class='section-title' style='margin-top:22px'>Session history</div>",
-                    unsafe_allow_html=True)
-        st.dataframe(
-            pd.DataFrame(st.session_state["history"]), hide_index=True,
-            column_config={"Malicious probability": st.column_config.ProgressColumn(
-                format="percent", min_value=0.0, max_value=1.0)})
+        render_session_overview(st.session_state["history"])
 
 # --------------------------------------------------------------------------- tab 2: batch
 with tab_batch:
@@ -459,8 +557,11 @@ with tab_batch:
                 k2.metric("Safe", int((df["risk_level"] == "low").sum()))
                 k3.metric("Suspicious", int((df["risk_level"] == "medium").sum()))
                 k4.metric("Malicious", int((df["risk_level"] == "high").sum()))
-                show = df[["url", "Verdict", "malicious_probability", "error"]].rename(
-                    columns={"url": "URL", "malicious_probability": "Malicious probability", "error": "Error"})
+                if "known_domain" not in df:
+                    df["known_domain"] = None
+                show = df[["url", "Verdict", "malicious_probability", "known_domain", "error"]].rename(
+                    columns={"url": "URL", "malicious_probability": "Malicious probability",
+                             "known_domain": "Known domain", "error": "Error"})
                 st.dataframe(show, hide_index=True, column_config={
                     "Malicious probability": st.column_config.ProgressColumn(
                         format="percent", min_value=0.0, max_value=1.0)})
@@ -503,6 +604,13 @@ with tab_eval:
                    "Final = augmented + correction of mislabelled 'benign' phishing URLs. "
                    "External columns: detection rate on fresh OpenPhish phishing URLs and share of the Tranco "
                    "top-10k sites correctly classified as benign.")
+
+        curve_run = next((r for r in reversed(runs)
+                          if os.path.exists(os.path.join(REPORTS_DIR, r, "threshold_curve.json"))), None)
+        if curve_run:
+            render_threshold_explorer(load_json(os.path.join(REPORTS_DIR, curve_run, "threshold_curve.json")), curve_run)
+        else:
+            st.info("Retrain the model (`python -m app.train`) to enable the decision threshold explorer.")
 
         run = st.radio("Show detailed results for", runs, index=len(runs) - 1, horizontal=True)
         m = load_json(os.path.join(REPORTS_DIR, run, "metrics.json")) or {}
@@ -551,7 +659,8 @@ digraph G {
     api [label="FastAPI backend\\n/predict · /predict/batch"];
     feat2 [label="Same feature\\nextractor"];
     xai [label="Explanation\\n(decision paths)"];
-    ui -> api [label="URL"]; api -> feat2 -> xai; xai -> api [label="risk + reasons"]; api -> ui;
+    allow [label="Known-domain allow-list\\n(Tranco top 10k)"];
+    ui -> api [label="URL"]; api -> feat2 -> xai; xai -> allow; allow -> api [label="risk + reasons"]; api -> ui;
   }
   model -> feat2 [style=dashed, label="loaded at start-up"];
 }
@@ -568,6 +677,8 @@ digraph G {
 - **Label-noise correction** - ~3% of the dataset's "benign" URLs are obvious phishing kits
   (e.g. `paypal.com.us.cgi-bin.webscr...login...example.com.br`); they are relabelled before training.
 - **Three-level risk** - Safe / Suspicious / Malicious instead of a hard yes/no.
+- **Known-domain allow-list** - links directly on the 10,000 most popular domains are treated as safe
+  (never subdomains, shorteners, free hosting or paste sites); the model score is still shown.
 """)
     with c2:
         st.markdown("""

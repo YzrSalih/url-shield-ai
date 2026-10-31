@@ -1,3 +1,4 @@
+import pytest
 from fastapi.testclient import TestClient
 
 import app.main as main
@@ -7,7 +8,7 @@ client = TestClient(main.app)
 
 def test_predict_returns_valid_label():
     if main.model is None:
-        return  # model not trained in this environment
+        pytest.skip("model not trained in this environment")
     r = client.post("/predict", json={"url": "https://github.com"})
     assert r.status_code == 200
     body = r.json()
@@ -18,7 +19,7 @@ def test_predict_returns_valid_label():
 
 def test_invalid_url_returns_422():
     if main.model is None:
-        return
+        pytest.skip("model not trained in this environment")
     r = client.post("/predict", json={"url": "   "})
     assert r.status_code == 422
 
@@ -31,7 +32,7 @@ def test_missing_model_returns_503(monkeypatch):
 
 def test_predict_has_risk_level_and_latency():
     if main.model is None:
-        return
+        pytest.skip("model not trained in this environment")
     body = client.post("/predict", json={"url": "http://paypal.com.account-verify.tk/webscr?cmd=login"}).json()
     assert body["risk_level"] in {"low", "medium", "high"}
     assert body["latency_ms"] >= 0
@@ -40,9 +41,21 @@ def test_predict_has_risk_level_and_latency():
 
 def test_batch_handles_invalid_urls():
     if main.model is None:
-        return
+        pytest.skip("model not trained in this environment")
     r = client.post("/predict/batch", json={"urls": ["https://github.com", "   "]})
     assert r.status_code == 200
     items = r.json()
     assert items[0]["prediction"] in {"Benign", "Malicious"}
     assert items[1]["error"]
+
+
+def test_known_domain_overrides_model(monkeypatch):
+    if main.model is None:
+        pytest.skip("model not trained in this environment")
+    monkeypatch.setattr(main, "KNOWN_DOMAINS", {"paypal.com"})
+    body = client.post("/predict", json={"url": "https://www.paypal.com/signin"}).json()
+    assert body["known_domain"] == "paypal.com"
+    assert body["risk_level"] == "low" and body["prediction"] == "Benign"
+    assert body["model_risk_level"] in {"low", "medium", "high"}   # model output is still reported
+    other = client.post("/predict", json={"url": "http://paypal.com.account-verify.tk/webscr"}).json()
+    assert other["known_domain"] is None
