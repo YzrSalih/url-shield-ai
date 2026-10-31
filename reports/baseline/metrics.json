@@ -1,0 +1,129 @@
+{
+  "info": {
+    "run_name": "baseline",
+    "n_augmented": 0,
+    "n_relabeled": 0,
+    "dataset": "Kaggle Malicious URLs (malicious_phish.csv)",
+    "n_samples": 641110,
+    "n_benign": 428074,
+    "n_malicious": 213036,
+    "n_test": 128222,
+    "trained_at": "2026-10-31 12:04 UTC"
+  },
+  "best_model": "Random Forest",
+  "models": {
+    "Logistic Regression": {
+      "accuracy": 0.7355212054093682,
+      "precision": 0.5925847051557808,
+      "recall": 0.6530851737977328,
+      "f1": 0.6213657273011478,
+      "roc_auc": 0.8031950785173687,
+      "false_positive_rate": 0.2234538340244116,
+      "false_negative_rate": 0.3469148262022672,
+      "confusion_matrix": [
+        [
+          66484,
+          19131
+        ],
+        [
+          14781,
+          27826
+        ]
+      ],
+      "train_time_s": 0.8640031814575195
+    },
+    "Random Forest": {
+      "accuracy": 0.8869850727644242,
+      "precision": 0.813123663578047,
+      "recall": 0.8568075668317413,
+      "f1": 0.8343942493400226,
+      "roc_auc": 0.9562132162622407,
+      "false_positive_rate": 0.09799684634701863,
+      "false_negative_rate": 0.14319243316825875,
+      "confusion_matrix": [
+        [
+          77225,
+          8390
+        ],
+        [
+          6101,
+          36506
+        ]
+      ],
+      "train_time_s": 10.227795124053955
+    },
+    "Gradient Boosting": {
+      "accuracy": 0.8717926720843537,
+      "precision": 0.7786794462193823,
+      "recall": 0.8580514938859812,
+      "f1": 0.8164409258907734,
+      "roc_auc": 0.9473735674374134,
+      "false_positive_rate": 0.12136891899783916,
+      "false_negative_rate": 0.14194850611401882,
+      "confusion_matrix": [
+        [
+          75224,
+          10391
+        ],
+        [
+          6048,
+          36559
+        ]
+      ],
+      "train_time_s": 7.638048887252808
+    }
+  },
+  "per_category_detection_rate": {
+    "benign": [
+      85615,
+      0.09799684634701863
+    ],
+    "defacement": [
+      18934,
+      0.9274321326713848
+    ],
+    "malware": [
+      4842,
+      0.9663362247005369
+    ],
+    "phishing": [
+      18831,
+      0.7576336891296267
+    ]
+  },
+  "permutation_importance": {
+    "tld_length": 0.096033356938979,
+    "path_length": 0.06304024818605958,
+    "dot_count": 0.041595012001448176,
+    "slash_count": 0.039461818751885105,
+    "underscore_count": 0.02859367922183518,
+    "query_length": 0.02252960684666676,
+    "hostname_length": 0.02175316583458562,
+    "hostname_entropy": 0.019907060600207017,
+    "digit_count": 0.019039209015328497,
+    "url_length": 0.016658003210243688,
+    "digit_ratio": 0.014167290507858121,
+    "hyphen_count": 0.013946785565474063,
+    "ampersand_count": 0.01361055956709587,
+    "letter_ratio": 0.013149509844384366,
+    "url_entropy": 0.012664159497161553,
+    "subdomain_count": 0.011573173338566046,
+    "risky_extension": 0.008852111160427301,
+    "hostname_hyphen_count": 0.006067637960297944,
+    "suspicious_keyword_count": 0.005575627665962579,
+    "hostname_digit_count": 0.004515560390661344,
+    "percent_count": 0.0024324764169720626,
+    "equals_count": 0.0018044769416788232,
+    "has_ip_host": 0.0015428488272933416,
+    "question_count": 0.0014361958484682136,
+    "brand_in_subdomain": 0.0010473008043174969,
+    "brand_in_path": 0.0005708071093301293,
+    "suspicious_tld": 0.00047938615864078215,
+    "is_shortener": 0.0003836176608909891,
+    "has_at": 0.0002846999335128331,
+    "has_double_slash_in_path": 0.00013935582985660221,
+    "has_port": 0.00010501084759511059,
+    "free_hosting": 8.848401650862758e-05,
+    "has_punycode": 0.0
+  }
+}
