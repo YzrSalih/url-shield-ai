@@ -8,7 +8,7 @@
     "n_benign": 413393,
     "n_malicious": 227717,
     "n_test": 128222,
-    "trained_at": "2026-10-31 12:14 UTC"
+    "trained_at": "2026-10-31 17:26 UTC"
   },
   "best_model": "Random Forest",
   "models": {
@@ -30,7 +30,7 @@
           28612
         ]
       ],
-      "train_time_s": 0.7579512596130371
+      "train_time_s": 0.7600939273834229
     },
     "Random Forest": {
       "accuracy": 0.8709347849822964,
@@ -50,7 +50,7 @@
           38375
         ]
       ],
-      "train_time_s": 9.913398027420044
+      "train_time_s": 9.975872039794922
     },
     "Gradient Boosting": {
       "accuracy": 0.8580508805041257,
@@ -70,7 +70,7 @@
           38201
         ]
       ],
-      "train_time_s": 6.923415184020996
+      "train_time_s": 6.723884105682373
     }
   },
   "per_category_detection_rate": {

@@ -6,15 +6,15 @@
 - Samples after cleaning: 641,110 (benign 413,393 / malicious 227,717)
 - Train / test split: 80% / 20% stratified (test = 128,222 URLs), random_state=42
 - Features: 33 lexical features (scheme and 'www.' removed to avoid leakage)
-- Trained at: 2026-10-31 12:14 UTC
+- Trained at: 2026-10-31 17:26 UTC
 
 ## Model comparison (test set)
 
 | Model | Accuracy | Precision | Recall | F1 | ROC-AUC | FPR | FNR | Train time (s) |
 |---|---|---|---|---|---|---|---|---|
 | Logistic Regression | 0.7700 | 0.6950 | 0.6282 | 0.6600 | 0.8149 | 0.1518 | 0.3718 | 0.8 |
-| Random Forest **(best)** | 0.8709 | 0.8036 | 0.8426 | 0.8226 | 0.9466 | 0.1135 | 0.1574 | 9.9 |
-| Gradient Boosting | 0.8581 | 0.7787 | 0.8388 | 0.8076 | 0.9393 | 0.1313 | 0.1612 | 6.9 |
+| Random Forest **(best)** | 0.8709 | 0.8036 | 0.8426 | 0.8226 | 0.9466 | 0.1135 | 0.1574 | 10.0 |
+| Gradient Boosting | 0.8581 | 0.7787 | 0.8388 | 0.8076 | 0.9393 | 0.1313 | 0.1612 | 6.7 |
 
 ## Detection rate per category (Random Forest)
 
