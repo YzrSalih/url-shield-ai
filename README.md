@@ -7,6 +7,16 @@ Master's Thesis Project, Computer Science (MA Engineering), Akademia Finansów i
 A FastAPI backend classifies a URL as `Benign` or `Malicious` from its lexical features
 using a scikit-learn model, and a Streamlit frontend lets users analyze URLs interactively.
 
+## Screenshots
+
+| Analysis of a phishing URL | Explanation of the result |
+|---|---|
+| ![Overview](docs/screenshots/ui_overview.png) | ![Explanation](docs/screenshots/ui_explanation.png) |
+
+| Batch analysis | Model evaluation |
+|---|---|
+| ![Batch](docs/screenshots/ui_batch.png) | ![Evaluation](docs/screenshots/ui_evaluation.png) |
+
 ## Project structure
 
 ```

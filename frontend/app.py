@@ -550,7 +550,7 @@ digraph G {
     ui [label="Streamlit UI\\n(user)", fillcolor="#FFFFFF", color="#0F1B1A"];
     api [label="FastAPI backend\\n/predict · /predict/batch"];
     feat2 [label="Same feature\\nextractor"];
-    xai [label="Explanation\\n(perturbation)"];
+    xai [label="Explanation\\n(decision paths)"];
     ui -> api [label="URL"]; api -> feat2 -> xai; xai -> api [label="risk + reasons"]; api -> ui;
   }
   model -> feat2 [style=dashed, label="loaded at start-up"];

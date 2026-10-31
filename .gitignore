@@ -235,3 +235,6 @@ backend/app/models/*
 
 # Local PR helper
 PR_BODY.md
+
+# Thesis draft: keep out of the public repo (APD anti-plagiarism compares against online sources)
+thesis/
